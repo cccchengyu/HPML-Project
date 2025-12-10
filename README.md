@@ -1,111 +1,149 @@
-# HPML Project: Fake News Detection with BERT and LoRA
+# Optimizing BERT-base Fake News Classification with LoRA and Mixed Precision
 
-## Overview
-This project implements a high-performance fake news detection system using BERT models with various optimization techniques. The system is trained on the LIAR dataset and explores different training strategies including baseline models, mixed precision training (AMP), and parameter-efficient fine-tuning with LoRA.
+This repository contains the source code and experimental results for the project **"Optimizing BERT-base Fake News Classification with LoRA and Mixed Precision"**.
 
-**Platform**: This project is designed to run on **Google Colab** with GPU acceleration (A100 recommended).
+We investigate high-performance training strategies for BERT-based fake news classification on the LIAR dataset. We systematically compare three configurations:
 
-## Dependencies and Libraries
+1.  **Full-Precision Fine-Tuning (FP32)**
+2.  **Automatic Mixed Precision (AMP)**
+3.  **Low-Rank Adaptation (LoRA) + AMP**
 
-### Core Libraries
-- **PyTorch**: Deep learning framework for model training and inference
-- **Transformers (Hugging Face)**: Pre-trained BERT models and tokenizers
-- **PEFT (Parameter-Efficient Fine-Tuning)**: LoRA implementation for efficient model adaptation
+Our goal is to achieve competitive Macro-F1 scores while significantly reducing training time and GPU memory usage through mixed precision and parameter-efficient fine-tuning (PEFT).
 
-### Data Processing
-- **Pandas**: Dataset loading and manipulation
-- **NumPy**: Numerical operations and array handling
-- **Kagglehub**: Dataset download from Kaggle
+-----
 
-### Evaluation and Metrics
-- **Scikit-learn**: Model evaluation metrics (accuracy, F1-score, classification report)
+## 1\. Project Description
 
-### Performance Monitoring
-- **PyTorch Profiler**: Detailed profiling of training operations
-- **CUDA Memory Tools**: GPU memory usage tracking
+Automatic fact-checking is a high-stakes domain requiring efficient NLP models. In this project, we utilize the **LIAR dataset**, converting the original six-way classification into a binary task (Fake vs. True).
 
-## How to Run the Project
+Key features of this project include:
+
+  * **Model Architecture**: `bert-base-uncased` with a linear classification head.
+  * **Optimization**: PyTorch AMP (Automatic Mixed Precision) for memory reduction and speedup.
+  * **PEFT**: LoRA (Low-Rank Adaptation) applied to Query/Value projections to reduce trainable parameters.
+  * **Data Handling**: Class reweighting to handle label imbalance and rich metadata textualization (Speaker, Job, Context, etc.).
+  * **Profiling**: Deep dive into CUDA operator-level performance (GEMM vs. Attention kernels) using PyTorch Profiler.
+  * **Threshold Tuning**: Validation-based threshold optimization to maximize Macro-F1.
+
+-----
+
+## 2\. Project Milestones
+
+| Milestone | Description | Status |
+| :--- | :--- | :---: |
+| **Dataset Preparation** | Data loading via KaggleHub, text preprocessing, and binary label conversion. |  Completed |
+| **Baseline Implementation** | Full fine-tuning of BERT in FP32 with class reweighting. |  Completed |
+| **AMP Integration** | Implementation of `torch.amp` for mixed-precision training. |  Completed |
+| **LoRA Implementation** | Integration of PEFT library for parameter-efficient fine-tuning. |  Completed |
+| **Hyperparameter Tuning** | Grid search for LoRA rank, alpha, and dropout. |  Completed |
+| **Performance Profiling** | Operator-level analysis (CPU/CUDA time, Memory) using PyTorch Profiler. |  Completed |
+| **Threshold Optimization** | Post-processing technique to optimize decision thresholds for unbalanced classes. |  Completed |
+| **Final Evaluation** | Comprehensive comparison of Accuracy, Macro-F1, Speed, and Memory usage. |  Completed |
+
+-----
+
+## 3\. Repository and Code Structure
+
+The entire project logic is encapsulated in a single Jupyter Notebook: `HPML_Project.ipynb`.
+
+### File Structure
+
+```text
+.
+├── HPML_Project.ipynb    # Main execution notebook containing all experiments
+├── README.md             # Project documentation
+└── requirements.txt      # (Optional) Dependencies list
+```
+
+### Notebook Sections Overview
+
+The `HPML_Project.ipynb` is organized into the following logical blocks:
+
+1.  **Environment Setup**: Helper functions for GPU memory tracking and Dataset class definition (`TextualizedLIARDataset`).
+2.  **Profiler Utility**: A custom `train_epoch_with_profiler` function to capture CUDA kernel statistics for the first 5 batches.
+3.  **Baseline + AMP**:
+      * Full fine-tuning using `torch.amp.autocast`.
+      * Includes training loop, validation, and profiling export.
+4.  **LoRA + AMP**:
+      * Grid search implementation for finding optimal LoRA hyperparameters ($r, \alpha, dropout$).
+      * Final training loop using the best configuration.
+5.  **Baseline (FP32)**:
+      * Standard full-precision training for benchmarking purposes.
+6.  **Threshold Optimization**:
+      * Logic to sweep thresholds $[0.1, 0.9]$ on validation logits to maximize F1 score before testing.
+
+-----
+
+## 4\. How to Execute
 
 ### Prerequisites
-- A Google account to access Google Colab
-- Recommended: Colab Pro or Pro+ for access to A100 GPU
-- Ensure GPU runtime is enabled: Runtime → Change runtime type → Hardware accelerator → GPU
 
-### 1. Essential Setup Cells
+The code is designed to run in a GPU-accelerated environment (e.g., Google Colab, Kaggle Notebooks, or a local server with NVIDIA GPU).
 
-Run these foundational cells first in order:
+**Dependencies:**
 
-#### **Import**
-Loads all necessary libraries and dependencies for the project.
-
-#### **Time and Memory**
-Provides utility functions to track training time and GPU memory consumption throughout the experiments.
-
-#### **Load Dataset**
-Downloads and prepares the LIAR dataset from Kaggle, setting up train, validation, and test splits.
-
-#### **Profiler Function**
-Implements a profiling mechanism that monitors the first 5 batches of the second epoch during training, capturing detailed performance metrics for analysis.
-
----
-
-### 2. Model Training Options
-
-The project offers three training configurations, each with different optimization strategies:
-
-#### **Only Baseline**
-- Standard BERT training without optimizations
-- After training, run **Rebuild for Baseline Only** to optimize the classification threshold
-
-#### **Baseline + AMP**
-- BERT training with Automatic Mixed Precision for faster computation
-- After training, run **Rebuild for Baseline + AMP** to optimize the classification threshold
-
-#### **Model with LoRA + AMP**  Special Instructions
-This option requires additional setup steps:
-
-1. **LoRA Cell**: Run this first to download LoRA-related components
-2. **Grid Search Function**: Define the hyperparameter search space
-3. **LoRA Grid Search Before Final Training**: Execute grid search to find optimal parameters
-4. **Get Best Params**: Extract the best hyperparameter configuration from grid search results
-5. **Model with LoRA + AMP**: Train the final model with optimized parameters
-6. **Rebuild for LoRA + AMP**: Optimize the classification threshold for the trained model
-
----
-
-### 3. Threshold Optimization
-
-Due to class imbalance in the LIAR dataset (unequal distribution of True/False labels), each model requires threshold tuning to maximize performance. The **Rebuild** cells perform this optimization by:
-- Evaluating multiple threshold values on the validation set
-- Selecting the threshold that maximizes macro F1-score
-- Applying the optimized threshold to test set predictions
-
----
-
-## Execution Order Summary
-
-### For Baseline Models:
-```
-Import → Time and Memory → Load Dataset → Profiler Function 
-  → Only Baseline → Rebuild for Baseline Only
-  OR
-  → Baseline + AMP → Rebuild for Baseline + AMP
+```bash
+pip install torch transformers scikit-learn pandas peft kagglehub
 ```
 
-### For LoRA Model:
-```
-Import → Time and Memory → Load Dataset → Profiler Function 
-  → LoRA Cell → Grid Search Function 
-  → LoRA Grid Search Before Final Training → Get Best Params 
-  → Model with LoRA + AMP → Rebuild for LoRA + AMP
-```
+### Running the Code
 
----
+1.  **Download the Notebook**: Clone this repo or download `HPML_Project.ipynb`.
+2.  **Dataset Access**: The code uses `kagglehub` to automatically download the LIAR dataset.
+      * *Note: You may need to authenticate with Kaggle if the dataset is private, though the code assumes public access.*
+3.  **Run All Cells**: Execute the cells sequentially. The notebook will:
+      * Download the data.
+      * Train the **Baseline+AMP** model and save `best_baselineamp_model.pth`.
+      * Run **LoRA** Grid Search, train the best LoRA model, and save `best_lora_model.pth`.
+      * Train the **FP32 Baseline** model and save `best_baselineonly_model.pth`.
+      * Output classification reports and profiler tables for each run.
 
-## Notes
-- **Platform Requirements**: This notebook is optimized for Google Colab environment with GPU acceleration
-- Each model's training cell can be run independently after completing the setup cells
-- The profiling data helps identify performance bottlenecks in different training configurations
-- Grid search for LoRA significantly improves model performance by finding optimal hyperparameters
-- Threshold optimization is crucial for handling the imbalanced dataset effectively
-- Runtime may vary depending on the GPU type allocated by Colab (A100 > V100 > T4)
+### Viewing Profiler Traces
+
+The code exports Chrome traces (e.g., `profiler_trace_epoch1.json`). To view them:
+
+1.  Download the `.json` file generated in the notebook directory.
+2.  Open Google Chrome and navigate to `chrome://tracing`.
+3.  Load the `.json` file to visualize the GPU timeline.
+
+-----
+
+## 5\. Results and Observations
+
+We evaluated three configurations on a single NVIDIA A100 GPU.
+
+### A. Classification Performance
+
+*Threshold calibration was applied to maximize Macro-F1.*
+
+| Method | Accuracy | Macro F1 | Fake Recall | True Recall |
+| :--- | :---: | :---: | :---: | :---: |
+| **Baseline (FP32)** | 0.66 | 0.65 | 0.54 | 0.76 |
+| **Baseline + AMP** | 0.65 | 0.64 | 0.59 | 0.70 |
+| **LoRA + AMP** | 0.61 | 0.60 | 0.52 | 0.68 |
+
+### B. Computational Efficiency
+
+*AMP significantly reduces memory and time, while LoRA provides further memory savings.*
+
+| Method | Trainable Params | Avg Epoch Time (s) | Peak Memory (MB) |
+| :--- | :---: | :---: | :---: |
+| **Baseline (FP32)** | 109.5M | 78.5s | \~20,878 MB |
+| **Baseline + AMP** | 109.5M | 14.7s | \~16,057 MB |
+| **LoRA + AMP** | 0.30M | 13.5s | \~11,494 MB |
+
+### C. Key Observations
+
+1.  **Speedup**: Mixed Precision (AMP) delivers a **\>5x speedup** compared to FP32 by utilizing Tensor Cores for matrix multiplications.
+2.  **Memory**: LoRA + AMP creates the smallest footprint (\~11.5 GB), reducing memory usage by **\~45%** compared to the FP32 baseline.
+3.  **Profiling Insights**:
+      * **GEMM (Linear Layers)**: AMP significantly accelerates these operations. LoRA further reduces the cost of projection layers by reducing the rank of trainable matrices.
+      * **Attention Bottleneck**: While LoRA optimizes linear projections, the **Attention mechanism** remains a computational bottleneck (runtime dominated by sequence length), which LoRA does not directly optimize.
+4.  **Trade-off**: LoRA + AMP offers the best efficiency for resource-constrained environments, though it incurs a slight drop in Macro-F1 compared to full fine-tuning.
+
+-----
+
+### Authors
+
+  * Dawei Sun
+  * Yikai Xu
