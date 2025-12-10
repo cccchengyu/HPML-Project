@@ -53,7 +53,7 @@ The entire project logic is encapsulated in a single Jupyter Notebook: `HPML_Pro
 .
 ├── HPML_Project.ipynb    # Main execution notebook containing all experiments
 ├── README.md             # Project documentation
-└── requirements.txt      # (Optional) Dependencies list
+└── figs                  # Results diagrams
 ```
 
 ### Notebook Sections Overview
