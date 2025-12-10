@@ -27,18 +27,19 @@ Key features of this project include:
 
 -----
 
-## 2\. Project Milestones
+## 2\. Project Milestones and Status
+
+The following milestones outline the roadmap of our optimization and analysis process.
 
 | Milestone | Description | Status |
 | :--- | :--- | :---: |
-| **Dataset Preparation** | Data loading via KaggleHub, text preprocessing, and binary label conversion. |  Completed |
-| **Baseline Implementation** | Full fine-tuning of BERT in FP32 with class reweighting. |  Completed |
-| **AMP Integration** | Implementation of `torch.amp` for mixed-precision training. |  Completed |
-| **LoRA Implementation** | Integration of PEFT library for parameter-efficient fine-tuning. |  Completed |
-| **Hyperparameter Tuning** | Grid search for LoRA rank, alpha, and dropout. |  Completed |
-| **Performance Profiling** | Operator-level analysis (CPU/CUDA time, Memory) using PyTorch Profiler. |  Completed |
-| **Threshold Optimization** | Post-processing technique to optimize decision thresholds for unbalanced classes. |  Completed |
-| **Final Evaluation** | Comprehensive comparison of Accuracy, Macro-F1, Speed, and Memory usage. |  Completed |
+| **BERT Fine-tuning** | Unfreeze transformer layers and retrain end-to-end to establish a strong baseline. |  Completed |
+| **LoRA + Mixed Precision** | Inject LoRA adapters into BERT and train using AMP to accelerate training and improve generalization. |  Completed |
+| **Feature Selection** | Revisit structured features (Speaker, Job, Party, etc.) to assess their contribution and redundancy. |  Completed |
+| **Hyperparameter Tuning** | Optimize learning rate, dropout rate, and batch size via Grid Search. | Completed |
+| **Profiling** | Use PyTorch Profiler to analyze time consumption across forward/backward passes and optimize training runtime. |  Completed |
+| **Logging** | Record and compare model training time and validation performance across variants (Baseline, AMP, LoRA). |  Completed |
+| **Distributed Training** | Attempt multi-GPU training to further scale the training process. | Skipped |
 
 -----
 
@@ -80,12 +81,6 @@ The `HPML_Project.ipynb` is organized into the following logical blocks:
 
 The code is designed to run in a GPU-accelerated environment (e.g., Google Colab, Kaggle Notebooks, or a local server with NVIDIA GPU).
 
-**Dependencies:**
-
-```bash
-pip install torch transformers scikit-learn pandas peft kagglehub
-```
-
 ### Running the Code
 
 1.  **Download the Notebook**: Clone this repo or download `HPML_Project.ipynb`.
@@ -98,13 +93,6 @@ pip install torch transformers scikit-learn pandas peft kagglehub
       * Train the **FP32 Baseline** model and save `best_baselineonly_model.pth`.
       * Output classification reports and profiler tables for each run.
 
-### Viewing Profiler Traces
-
-The code exports Chrome traces (e.g., `profiler_trace_epoch1.json`). To view them:
-
-1.  Download the `.json` file generated in the notebook directory.
-2.  Open Google Chrome and navigate to `chrome://tracing`.
-3.  Load the `.json` file to visualize the GPU timeline.
 
 -----
 
@@ -132,14 +120,6 @@ We evaluated three configurations on a single NVIDIA A100 GPU.
 | **Baseline + AMP** | 109.5M | 14.7s | \~16,057 MB |
 | **LoRA + AMP** | 0.30M | 13.5s | \~11,494 MB |
 
-### C. Key Observations
-
-1.  **Speedup**: Mixed Precision (AMP) delivers a **\>5x speedup** compared to FP32 by utilizing Tensor Cores for matrix multiplications.
-2.  **Memory**: LoRA + AMP creates the smallest footprint (\~11.5 GB), reducing memory usage by **\~45%** compared to the FP32 baseline.
-3.  **Profiling Insights**:
-      * **GEMM (Linear Layers)**: AMP significantly accelerates these operations. LoRA further reduces the cost of projection layers by reducing the rank of trainable matrices.
-      * **Attention Bottleneck**: While LoRA optimizes linear projections, the **Attention mechanism** remains a computational bottleneck (runtime dominated by sequence length), which LoRA does not directly optimize.
-4.  **Trade-off**: LoRA + AMP offers the best efficiency for resource-constrained environments, though it incurs a slight drop in Macro-F1 compared to full fine-tuning.
 
 -----
 
